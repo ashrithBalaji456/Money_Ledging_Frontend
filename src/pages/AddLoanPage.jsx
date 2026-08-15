@@ -103,7 +103,7 @@ const AddLoanPage = () => {
       }
 
       // Check fields specific to interest types
-      if (interestType === 'SIMPLE_INTEREST') {
+      if (interestType === 'SIMPLE_INTEREST' || interestType === 'INTEREST_ONLY') {
         const rate = parseFloat(interestRate);
         if (isNaN(rate) || rate < 0) {
           setPreview(null);
@@ -126,7 +126,7 @@ const AddLoanPage = () => {
           loanStartDate,
         };
 
-        if (interestType === 'SIMPLE_INTEREST') {
+        if (interestType === 'SIMPLE_INTEREST' || interestType === 'INTEREST_ONLY') {
           payload.interestRate = parseFloat(interestRate);
           payload.interestRateType = interestRateType;
         } else {
@@ -167,7 +167,7 @@ const AddLoanPage = () => {
         notes,
       };
 
-      if (interestType === 'SIMPLE_INTEREST') {
+      if (interestType === 'SIMPLE_INTEREST' || interestType === 'INTEREST_ONLY') {
         payload.interestRate = parseFloat(interestRate);
         payload.interestRateType = interestRateType;
       } else {
@@ -245,7 +245,18 @@ const AddLoanPage = () => {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
-                Simple Interest Rate (%)
+                Simple Interest (%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setInterestType('INTEREST_ONLY')}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all btn-animate cursor-pointer ${
+                  interestType === 'INTEREST_ONLY'
+                    ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-bold shadow-md shadow-amber-500/10'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                }`}
+              >
+                Interest Only (Monthly)
               </button>
               <button
                 type="button"
@@ -256,7 +267,7 @@ const AddLoanPage = () => {
                     : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
-                Custom Fixed Interest (₹)
+                Fixed Interest (₹)
               </button>
             </div>
           </div>
@@ -280,7 +291,7 @@ const AddLoanPage = () => {
               </div>
             </div>
 
-            {interestType === 'SIMPLE_INTEREST' ? (
+            {interestType === 'SIMPLE_INTEREST' || interestType === 'INTEREST_ONLY' ? (
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Interest Rate (%)</label>
                 <div className="relative rounded-md shadow-sm">
@@ -320,7 +331,7 @@ const AddLoanPage = () => {
 
           {/* Period Type & Duration */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {interestType === 'SIMPLE_INTEREST' ? (
+            {interestType === 'SIMPLE_INTEREST' || interestType === 'INTEREST_ONLY' ? (
               <CustomDropdown
                 label="Interest Rate Period"
                 value={interestRateType}
@@ -409,9 +420,15 @@ const AddLoanPage = () => {
               </div>
 
               <div className="border border-white/5 pt-4 space-y-1 bg-slate-950/20 p-3.5 rounded-xl">
-                <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Estimated Monthly Payment</span>
+                <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">
+                  {interestType === 'INTEREST_ONLY' ? 'Monthly Interest Installment' : 'Estimated Monthly Payment'}
+                </span>
                 <p className="text-2xl font-extrabold text-amber-400">₹{preview.monthlyInstallment.toFixed(2)}</p>
-                <p className="text-[10px] text-slate-500 mt-1 italic">Calculated for {durationInMonths} installments</p>
+                <p className="text-[10px] text-slate-500 mt-1 italic">
+                  {interestType === 'INTEREST_ONLY'
+                    ? `First ${parseInt(durationInMonths) - 1} payments are interest-only. Final payment will be ₹${(parseFloat(principalAmount) + preview.monthlyInstallment).toFixed(2)} (Principal + Interest).`
+                    : `Calculated for ${durationInMonths} installments`}
+                </p>
               </div>
             </div>
           ) : (
