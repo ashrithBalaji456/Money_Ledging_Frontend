@@ -193,13 +193,7 @@ cd Money_Ledging_Frontend
 npm install
 ```
 
-### Environment Variables
-
-Create a `.env` file in the project root:
-
-```env
-VITE_API_BASE_URL=https://money-ledging-backend.onrender.com
-```
+The frontend API client is configured to call `https://money-ledging-backend.onrender.com`.
 
 ### Run Dev Server
 
