@@ -198,7 +198,7 @@ npm install
 Create a `.env` file in the project root:
 
 ```env
-VITE_API_BASE_URL=http://localhost:8080/api
+VITE_API_BASE_URL=https://money-ledging-backend.onrender.com
 ```
 
 ### Run Dev Server
