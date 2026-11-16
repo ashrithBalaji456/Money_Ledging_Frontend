@@ -1,48 +1,165 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import PaymentModal from '../components/PaymentModal';
-import { DollarSign, Clock, AlertTriangle, CheckCircle, FileText, ArrowRight, RefreshCw, Calendar } from 'lucide-react';
+import { DollarSign, Clock, AlertTriangle, CheckCircle, RefreshCw, Calendar, WifiOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const CACHE_KEY = 'cached_dashboard_data';
+
 const Dashboard = () => {
-  const [summary, setSummary] = useState(null);
-  const [overdue, setOverdue] = useState([]);
-  const [dueSoon, setDueSoon] = useState([]);
-  const [recent, setRecent] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Try loading cached dashboard data for immediate instant rendering on open
+  const [cached] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CACHE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [summary, setSummary] = useState(() => cached?.summary || null);
+  const [overdue, setOverdue] = useState(() => cached?.overdue || []);
+  const [dueSoon, setDueSoon] = useState(() => cached?.dueSoon || []);
+  const [recent, setRecent] = useState(() => cached?.recent || []);
+  const [isLoading, setIsLoading] = useState(!cached);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [retryStatus, setRetryStatus] = useState('');
   const [error, setError] = useState('');
   
   // Payment Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
 
-  const fetchDashboardData = async () => {
-    setIsLoading(true);
-    setError('');
+  const retryTimeoutRef = useRef(null);
+  const isFetchingRef = useRef(false);
+
+  const fetchDashboardData = useCallback(async (retryAttempt = 0) => {
+    if (isFetchingRef.current && retryAttempt === 0) return;
+    isFetchingRef.current = true;
+
+    if (retryAttempt === 0) {
+      if (!summary) setIsLoading(true);
+      else setIsRefreshing(true);
+      setError('');
+      setRetryStatus('');
+    }
+
     try {
-      const [summaryRes, overdueRes, dueSoonRes, recentRes] = await Promise.all([
+      // Use allSettled so one delayed/failed sub-query doesn't break the whole dashboard
+      const results = await Promise.allSettled([
         api.get('/api/dashboard/summary'),
         api.get('/api/dashboard/overdue'),
         api.get('/api/dashboard/due-soon'),
         api.get('/api/dashboard/recent-payments'),
       ]);
 
-      setSummary(summaryRes.data);
-      setOverdue(overdueRes.data);
-      setDueSoon(dueSoonRes.data);
-      setRecent(recentRes.data);
+      const [summaryRes, overdueRes, dueSoonRes, recentRes] = results;
+
+      let newSummary = summary;
+      let newOverdue = overdue;
+      let newDueSoon = dueSoon;
+      let newRecent = recent;
+      let hasAnySuccess = false;
+
+      if (summaryRes.status === 'fulfilled') {
+        newSummary = summaryRes.value.data;
+        setSummary(newSummary);
+        hasAnySuccess = true;
+      }
+      if (overdueRes.status === 'fulfilled') {
+        newOverdue = overdueRes.value.data;
+        setOverdue(newOverdue);
+        hasAnySuccess = true;
+      }
+      if (dueSoonRes.status === 'fulfilled') {
+        newDueSoon = dueSoonRes.value.data;
+        setDueSoon(newDueSoon);
+        hasAnySuccess = true;
+      }
+      if (recentRes.status === 'fulfilled') {
+        newRecent = recentRes.value.data;
+        setRecent(newRecent);
+        hasAnySuccess = true;
+      }
+
+      // If at least summary or all succeeded, cache and clear error
+      if (hasAnySuccess) {
+        setError('');
+        setRetryStatus('');
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            summary: newSummary,
+            overdue: newOverdue,
+            dueSoon: newDueSoon,
+            recent: newRecent,
+            timestamp: Date.now(),
+          }));
+        } catch {
+          // Ignore local storage quota limits
+        }
+      }
+
+      // Check if all failed
+      const allFailed = results.every((r) => r.status === 'rejected');
+      if (allFailed) {
+        throw new Error('All dashboard requests failed');
+      }
     } catch (err) {
-      console.error(err);
-      setError('Could not fetch dashboard metrics. Please make sure the backend is active.');
+      console.warn('Dashboard fetch error:', err);
+
+      // Auto-retry up to 3 times with exponential backoff (e.g. Render backend waking up)
+      if (retryAttempt < 3) {
+        const nextAttempt = retryAttempt + 1;
+        const delay = nextAttempt * 2500;
+        setRetryStatus(`Waking up server, retrying automatically in ${delay / 1000}s... (Attempt ${nextAttempt}/3)`);
+
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => {
+          isFetchingRef.current = false;
+          fetchDashboardData(nextAttempt);
+        }, delay);
+        return;
+      } else {
+        setRetryStatus('');
+        setError('Could not connect to the backend server. Please verify your connection or tap Refresh.');
+      }
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      isFetchingRef.current = false;
     }
-  };
+  }, [summary, overdue, dueSoon, recent]);
 
+  // Initial fetch on mount
   useEffect(() => {
-    fetchDashboardData();
+    fetchDashboardData(0);
+
+    return () => {
+      clearTimeout(retryTimeoutRef.current);
+    };
   }, []);
+
+  // Auto-refresh when user brings the mobile app or browser tab back into foreground
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData(0);
+      }
+    };
+
+    const handleFocus = () => {
+      fetchDashboardData(0);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchDashboardData]);
 
   const openPaymentModal = (payment) => {
     setSelectedPayment(payment);
@@ -50,14 +167,17 @@ const Dashboard = () => {
   };
 
   const handlePaymentSuccess = () => {
-    fetchDashboardData(); // Refresh all stats
+    fetchDashboardData(0); // Refresh all stats
   };
 
   if (isLoading && !summary) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <RefreshCw className="h-10 w-10 text-amber-500 animate-spin" />
-        <p className="text-slate-400 font-semibold">Loading ledger records...</p>
+        <p className="text-slate-300 font-bold text-base">Loading ledger records...</p>
+        {retryStatus && (
+          <p className="text-amber-400 text-xs font-semibold animate-pulse">{retryStatus}</p>
+        )}
       </div>
     );
   }
@@ -67,39 +187,66 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
-            Ledger Summary
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">
+              Ledger Summary
+            </h2>
+            {isRefreshing && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                <RefreshCw className="h-3 w-3 animate-spin" /> Updating
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-400 font-semibold mt-0.5">Here is the state of your money lending notebook today.</p>
         </div>
         <button
-          onClick={fetchDashboardData}
-          className="inline-flex items-center gap-2 self-start px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-slate-200 hover:bg-white/10 shadow-sm transition-all duration-300 btn-animate cursor-pointer"
+          onClick={() => fetchDashboardData(0)}
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-2 self-start px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-semibold text-slate-200 hover:bg-white/10 shadow-sm transition-all duration-300 btn-animate cursor-pointer disabled:opacity-50"
         >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl flex items-start gap-3 card-animate">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-red-400 mt-0.5 animate-pulse" />
-          <div>
-            <h4 className="font-bold">Database connection error</h4>
-            <p className="text-sm mt-0.5">{error}</p>
+      {/* Auto-reconnect banner */}
+      {retryStatus && (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-2xl flex items-center gap-3 card-animate">
+          <RefreshCw className="h-5 w-5 shrink-0 text-amber-400 animate-spin" />
+          <div className="text-sm font-medium">
+            <span className="font-bold">Connecting to Cloud Backend: </span>
+            {retryStatus}
           </div>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl flex items-start justify-between gap-3 card-animate">
+          <div className="flex items-start gap-3">
+            <WifiOff className="h-5 w-5 shrink-0 text-red-400 mt-0.5 animate-pulse" />
+            <div>
+              <h4 className="font-bold">Backend Connection Notice</h4>
+              <p className="text-sm mt-0.5">{error}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => fetchDashboardData(0)}
+            className="shrink-0 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+          >
+            Retry Now
+          </button>
         </div>
       )}
 
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 card-animate">
-          
           <div className="glass-card bg-slate-900/35 p-6 rounded-2xl border border-white/5 shadow-xl flex items-center justify-between relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full pointer-events-none group-hover:bg-blue-500/10 transition-all duration-300" />
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Money Lent</p>
-              <h3 className="text-3xl font-extrabold text-slate-100 mt-1">₹{summary.totalLent.toFixed(2)}</h3>
+              <h3 className="text-3xl font-extrabold text-slate-100 mt-1">₹{summary.totalLent?.toFixed(2) ?? '0.00'}</h3>
               <p className="text-[10px] text-slate-400 mt-1">Total principal given away</p>
             </div>
             <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20 shadow-md">
@@ -111,7 +258,7 @@ const Dashboard = () => {
             <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 blur-2xl rounded-full pointer-events-none group-hover:bg-green-500/10 transition-all duration-300" />
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Total Money Collected</p>
-              <h3 className="text-3xl font-extrabold text-emerald-400 mt-1">₹{summary.totalCollected.toFixed(2)}</h3>
+              <h3 className="text-3xl font-extrabold text-emerald-400 mt-1">₹{summary.totalCollected?.toFixed(2) ?? '0.00'}</h3>
               <p className="text-[10px] text-slate-400 mt-1">Principal + interest collected</p>
             </div>
             <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shadow-md">
@@ -123,7 +270,7 @@ const Dashboard = () => {
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-2xl rounded-full pointer-events-none group-hover:bg-amber-500/10 transition-all duration-300" />
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Outstanding Receivable</p>
-              <h3 className="text-3xl font-extrabold text-amber-400 mt-1">₹{summary.outstanding.toFixed(2)}</h3>
+              <h3 className="text-3xl font-extrabold text-amber-400 mt-1">₹{summary.outstanding?.toFixed(2) ?? '0.00'}</h3>
               <p className="text-[10px] text-slate-400 mt-1">Remaining amount to be paid</p>
             </div>
             <div className="p-3 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20 shadow-md">
@@ -135,7 +282,6 @@ const Dashboard = () => {
 
       {/* Urgent Payments: Overdue & Due Soon */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 card-animate">
-        
         {/* Overdue Payments Card */}
         <div className="glass-card bg-slate-900/30 rounded-2xl border border-red-500/15 shadow-2xl overflow-hidden">
           <div className="bg-red-950/20 px-6 py-4 border-b border-red-500/10 flex items-center justify-between">
@@ -147,7 +293,7 @@ const Dashboard = () => {
               {overdue.length} Late
             </span>
           </div>
-          
+
           <div className="p-6 divide-y divide-white/5 max-h-96 overflow-y-auto">
             {overdue.length === 0 ? (
               <p className="text-center text-slate-500 py-8 text-sm font-medium">✓ No overdue payments! Good job.</p>
@@ -159,12 +305,14 @@ const Dashboard = () => {
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                       <span className="text-red-400 font-bold">Late by {payment.lateDays} days</span>
                       <span>•</span>
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-slate-500" /> Due: {payment.dueDate}</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3 text-slate-500" /> Due: {payment.dueDate}
+                      </span>
                     </div>
                     <div className="text-sm font-extrabold text-slate-200">
                       Owed: <span className="text-red-400">₹{(payment.expectedAmount - payment.paidAmount).toFixed(2)}</span>{' '}
                       <span className="text-[10px] text-slate-500 font-normal">
-                        (of ₹{payment.expectedAmount.toFixed(2)})
+                        (of ₹{payment.expectedAmount?.toFixed(2)})
                       </span>
                     </div>
                   </div>
@@ -206,12 +354,14 @@ const Dashboard = () => {
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                         <span className="text-amber-400 font-bold">{remainingText}</span>
                         <span>•</span>
-                        <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-slate-500" /> Due: {payment.dueDate}</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-slate-500" /> Due: {payment.dueDate}
+                        </span>
                       </div>
                       <div className="text-sm font-extrabold text-slate-200">
                         Owed: <span className="text-amber-400">₹{(payment.expectedAmount - payment.paidAmount).toFixed(2)}</span>{' '}
                         <span className="text-[10px] text-slate-500 font-normal">
-                          (of ₹{payment.expectedAmount.toFixed(2)})
+                          (of ₹{payment.expectedAmount?.toFixed(2)})
                         </span>
                       </div>
                     </div>
@@ -227,7 +377,6 @@ const Dashboard = () => {
             )}
           </div>
         </div>
-
       </div>
 
       {/* Recent Payments Section */}
@@ -236,7 +385,7 @@ const Dashboard = () => {
           <h3 className="font-extrabold text-slate-200 text-sm uppercase tracking-wider">🟢 Recent Payments Received</h3>
           <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Latest history</span>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
@@ -262,8 +411,8 @@ const Dashboard = () => {
                         {payment.borrowerName}
                       </Link>
                     </td>
-                    <td className="py-4 px-6 text-slate-400 font-medium">₹{payment.expectedAmount.toFixed(2)}</td>
-                    <td className="py-4 px-6 text-emerald-400 font-bold">₹{payment.paidAmount.toFixed(2)}</td>
+                    <td className="py-4 px-6 text-slate-400 font-medium">₹{payment.expectedAmount?.toFixed(2)}</td>
+                    <td className="py-4 px-6 text-emerald-400 font-bold">₹{payment.paidAmount?.toFixed(2)}</td>
                     <td className="py-4 px-6 text-slate-300 font-medium">{payment.paidDate}</td>
                     <td className="py-4 px-6 text-slate-400 font-medium">#{payment.installmentNumber}</td>
                     <td className="py-4 px-6 text-slate-500 italic text-xs max-w-xs truncate">{payment.notes || '—'}</td>

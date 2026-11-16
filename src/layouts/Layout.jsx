@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen, Users, LayoutDashboard, PlusCircle, LogOut, Menu, X } from 'lucide-react';
+import { clearAuthSession } from '../services/api';
 
 const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -15,9 +16,7 @@ const Layout = () => {
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    localStorage.removeItem('role');
+    clearAuthSession();
     navigate('/login');
   };
 

@@ -1,0 +1,9 @@
+{
+  "appId": "com.moneylending.app",
+  "appName": "Lending Notebook",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
