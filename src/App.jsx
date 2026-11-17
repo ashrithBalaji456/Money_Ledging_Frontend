@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
+import AndroidBackButtonHandler from './components/AndroidBackButtonHandler';
 import Layout from './layouts/Layout';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
@@ -12,6 +13,7 @@ import SignupPage from './pages/SignupPage';
 function App() {
   return (
     <Router>
+      <AndroidBackButtonHandler />
       <Routes>
         {/* Public Authentication Route */}
         <Route path="/login" element={<LoginPage />} />

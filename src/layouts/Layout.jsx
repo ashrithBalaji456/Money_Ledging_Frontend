@@ -24,6 +24,20 @@ const Layout = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  React.useEffect(() => {
+    if (isMobileMenuOpen) {
+      window.__closeActiveModal = () => {
+        setIsMobileMenuOpen(false);
+        return true;
+      };
+    } else {
+      window.__closeActiveModal = null;
+    }
+    return () => {
+      window.__closeActiveModal = null;
+    };
+  }, [isMobileMenuOpen]);
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#0b0f19] text-slate-100">
       {/* Sidebar for Desktop */}

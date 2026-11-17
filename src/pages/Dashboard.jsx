@@ -166,6 +166,20 @@ const Dashboard = () => {
     setIsModalOpen(true);
   };
 
+  useEffect(() => {
+    if (isModalOpen) {
+      window.__closeActiveModal = () => {
+        setIsModalOpen(false);
+        return true;
+      };
+    } else {
+      window.__closeActiveModal = null;
+    }
+    return () => {
+      window.__closeActiveModal = null;
+    };
+  }, [isModalOpen]);
+
   const handlePaymentSuccess = () => {
     fetchDashboardData(0); // Refresh all stats
   };
