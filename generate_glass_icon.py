@@ -2,48 +2,48 @@ import os
 import math
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-def create_glassy_luxury_icon(size=1024, is_foreground_only=False):
+def create_lending_exchange_icon(size=1024, is_foreground_only=False):
     canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     center_x = size / 2.0
     center_y = size / 2.0
     
-    # Scale: for adaptive foreground, icon elements must fit inside 66% (diameter ~ 675px out of 1024px)
+    # Scale: for adaptive foreground, elements must fit inside 66% (diameter ~ 675px out of 1024px)
     scale = 0.58 if is_foreground_only else 0.86
 
     # ----------------------------------------------------
-    # 1. Background (Full App Icon): Deep Obsidian + Aurora Glow
+    # 1. Background: Deep Obsidian + Aurora Mesh
     # ----------------------------------------------------
     if not is_foreground_only:
-        bg = Image.new('RGBA', (size, size), (6, 9, 18, 255)) # Deep Obsidian #060912
+        bg = Image.new('RGBA', (size, size), (6, 9, 18, 255))
 
-        # Aurora 1: Electric Cyan & Sapphire (Top-Left)
+        # Aurora Glow 1: Electric Sapphire (Top-Left)
         o1 = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        ImageDraw.Draw(o1).ellipse([size*0.06, size*0.06, size*0.75, size*0.72], fill=(14, 165, 233, 140))
+        ImageDraw.Draw(o1).ellipse([size*0.05, size*0.06, size*0.75, size*0.72], fill=(14, 165, 233, 140))
         o1 = o1.filter(ImageFilter.GaussianBlur(size * 0.12))
         bg = Image.alpha_composite(bg, o1)
 
-        # Aurora 2: Emerald Green Growth Glow (Bottom-Left)
+        # Aurora Glow 2: Emerald Green (Bottom-Left)
         o2 = Image.new('RGBA', (size, size), (0, 0, 0, 0))
         ImageDraw.Draw(o2).ellipse([size*0.04, size*0.46, size*0.68, size*0.96], fill=(16, 185, 129, 150))
         o2 = o2.filter(ImageFilter.GaussianBlur(size * 0.12))
         bg = Image.alpha_composite(bg, o2)
 
-        # Aurora 3: Radiant Amber & Gold Wealth Glow (Bottom-Right)
+        # Aurora Glow 3: Radiant Amber / Gold (Center-Right)
         o3 = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        ImageDraw.Draw(o3).ellipse([size*0.38, size*0.38, size*0.96, size*0.96], fill=(245, 158, 11, 130))
+        ImageDraw.Draw(o3).ellipse([size*0.35, size*0.35, size*0.96, size*0.96], fill=(245, 158, 11, 130))
         o3 = o3.filter(ImageFilter.GaussianBlur(size * 0.11))
         bg = Image.alpha_composite(bg, o3)
 
-        # Aurora 4: Royal Violet (Top-Right)
+        # Aurora Glow 4: Royal Violet (Top-Right)
         o4 = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        ImageDraw.Draw(o4).ellipse([size*0.46, size*0.04, size*0.96, size*0.56], fill=(139, 92, 246, 110))
+        ImageDraw.Draw(o4).ellipse([size*0.48, size*0.04, size*0.96, size*0.56], fill=(139, 92, 246, 110))
         o4 = o4.filter(ImageFilter.GaussianBlur(size * 0.13))
         bg = Image.alpha_composite(bg, o4)
 
         canvas = Image.alpha_composite(canvas, bg)
 
     # ----------------------------------------------------
-    # 2. Glassmorphism Floating Squircle Card
+    # 2. Glassmorphism Squircle Card
     # ----------------------------------------------------
     card_w = int(size * 0.74 * scale)
     card_h = int(size * 0.74 * scale)
@@ -54,7 +54,7 @@ def create_glassy_luxury_icon(size=1024, is_foreground_only=False):
     x1 = x0 + card_w
     y1 = y0 + card_h
 
-    # Deep 3D Drop Shadow behind the Glass Plate
+    # Card Deep Ambient 3D Shadow
     shadow = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     s_offset = int(size * 0.042 * scale)
     ImageDraw.Draw(shadow).rounded_rectangle(
@@ -70,22 +70,20 @@ def create_glassy_luxury_icon(size=1024, is_foreground_only=False):
     mask_card = Image.new('L', (size, size), 0)
     ImageDraw.Draw(mask_card).rounded_rectangle([x0, y0, x1, y1], radius=corner_r, fill=255)
 
-    # Frosted Glass Gradient Fill (Icy translucent sheen -> Deep midnight glass)
+    # Translucent Ice & Slate Gradient Fill
     grad = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     for y in range(y0, y1 + 1):
         ratio = (y - y0) / float(card_h)
-        # Top: Ice highlight tint
-        # Bottom: Deep smoky translucent tint
         r_c = int(210 * (1 - ratio)**2 + 25 * 2 * ratio * (1 - ratio) + 12 * ratio**2)
         g_c = int(235 * (1 - ratio)**2 + 40 * 2 * ratio * (1 - ratio) + 20 * ratio**2)
         b_c = int(255 * (1 - ratio)**2 + 65 * 2 * ratio * (1 - ratio) + 40 * ratio**2)
-        alpha = int(70 * (1 - ratio) + 140 * ratio)
+        alpha = int(75 * (1 - ratio) + 145 * ratio)
         line = Image.new('RGBA', (size, 1), (r_c, g_c, b_c, alpha))
         grad.paste(line, (0, y))
 
     glass.paste(grad, (0, 0), mask=mask_card)
 
-    # Diagonal Gloss Specular Glare (Signature iOS/visionOS Glass Sheen)
+    # Diagonal Gloss Specular Glare (Apple Glass Sheen)
     glare = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     g_draw = ImageDraw.Draw(glare)
     glare_poly = [
@@ -124,141 +122,163 @@ def create_glassy_luxury_icon(size=1024, is_foreground_only=False):
     canvas = Image.alpha_composite(canvas, glass)
 
     # ----------------------------------------------------
-    # 3. Subtle Frosted Ledger Lines (Money Lending Identity)
+    # 3. Two People Avatars (Lender on Left, Borrower on Right)
     # ----------------------------------------------------
-    ledger_layer = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    ll_draw = ImageDraw.Draw(ledger_layer)
-    line_y_start = int(y1 - card_h * 0.22)
-    line_spacing = int(card_h * 0.055)
-    for i in range(2):
-        ly = line_y_start + i * line_spacing
-        lx_start = int(x0 + card_w * 0.25)
-        lx_end = int(x1 - card_w * 0.25)
-        # Frosted line
-        ll_draw.rounded_rectangle([lx_start, ly, lx_end, ly + max(2, int(size * 0.004 * scale))], radius=2, fill=(255, 255, 255, 45))
-        # Bullet dot
-        dot_col = (16, 185, 129, 200) if i == 0 else (245, 158, 11, 200)
-        ll_draw.ellipse([lx_start - int(card_w * 0.06), ly - 1, lx_start - int(card_w * 0.06) + int(card_w * 0.03), ly - 1 + int(card_w * 0.03)], fill=dot_col)
-    canvas = Image.alpha_composite(canvas, ledger_layer)
+    def draw_person(img, cx, cy, person_scale, base_color, outline_color):
+        layer = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        
+        # Head
+        head_r = int(28 * person_scale)
+        head_cy = cy - int(38 * person_scale)
+        d.ellipse([cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r], fill=base_color, outline=outline_color, width=max(2, int(3 * person_scale)))
+        
+        # Shoulders / Torso (curved arch)
+        torso_w = int(46 * person_scale)
+        torso_h = int(36 * person_scale)
+        torso_top = cy - int(4 * person_scale)
+        d.pieslice([cx - torso_w, torso_top - torso_h, cx + torso_w, torso_top + torso_h], start=0, end=180, fill=base_color, outline=outline_color, width=max(2, int(3 * person_scale)))
+        
+        # Specular highlight on head
+        d.ellipse([cx - head_r * 0.6, head_cy - head_r * 0.6, cx - head_r * 0.1, head_cy - head_r * 0.1], fill=(255, 255, 255, 180))
+        return Image.alpha_composite(img, layer)
 
-    # ----------------------------------------------------
-    # 4. Hero 3D Luminous Golden Rupee Symbol (₹)
-    # ----------------------------------------------------
-    font_path = "C:/Windows/Fonts/seguisb.ttf"
-    if not os.path.exists(font_path):
-        font_path = "C:/Windows/Fonts/arialbd.ttf"
+    p_scale = (card_w / 380.0)
+    person_y = int(center_y + card_h * 0.04)
+    p1_x = int(center_x - card_w * 0.28) # Person 1 (Lender)
+    p2_x = int(center_x + card_w * 0.28) # Person 2 (Borrower)
+
+    # Ambient glow under people
+    p_glow = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    pg_draw = ImageDraw.Draw(p_glow)
+    pg_draw.ellipse([p1_x - 60*p_scale, person_y - 70*p_scale, p1_x + 60*p_scale, person_y + 50*p_scale], fill=(14, 165, 233, 110))
+    pg_draw.ellipse([p2_x - 60*p_scale, person_y - 70*p_scale, p2_x + 60*p_scale, person_y + 50*p_scale], fill=(16, 185, 129, 110))
+    p_glow = p_glow.filter(ImageFilter.GaussianBlur(15))
+    canvas = Image.alpha_composite(canvas, p_glow)
+
+    # Draw Person 1 (Sapphire Cyan - The Lender)
+    canvas = draw_person(canvas, p1_x, person_y, p_scale, base_color=(14, 165, 233, 230), outline_color=(255, 255, 255, 220))
     
-    font_size = int(card_h * 0.58)
-    font = ImageFont.truetype(font_path, font_size)
-
-    text = "₹"
-    temp_draw = ImageDraw.Draw(canvas)
-    bbox = temp_draw.textbbox((0, 0), text, font=font)
-    tw = bbox[2] - bbox[0]
-    th = bbox[3] - bbox[1]
-
-    # Perfect centering considering actual glyph bounding box
-    tx = int(center_x - tw / 2.0 - bbox[0])
-    ty = int(center_y - th / 2.0 - bbox[1] - card_h * 0.045)
-
-    # Exact bounding box on canvas
-    actual_top = ty + bbox[1]
-    actual_bottom = ty + bbox[3]
-
-    # 3D Drop Shadow of Rupee onto Glass Plate
-    r_shadow = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    rs_offset = int(size * 0.024 * scale)
-    ImageDraw.Draw(r_shadow).text((tx, ty + rs_offset), text, font=font, fill=(0, 0, 0, 215))
-    r_shadow = r_shadow.filter(ImageFilter.GaussianBlur(size * 0.022 * scale))
-    canvas = Image.alpha_composite(canvas, r_shadow)
-
-    # Ambient Radiant Golden Glow behind Rupee
-    r_glow = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    ImageDraw.Draw(r_glow).text((tx, ty), text, font=font, fill=(245, 158, 11, 160))
-    r_glow = r_glow.filter(ImageFilter.GaussianBlur(size * 0.036 * scale))
-    canvas = Image.alpha_composite(canvas, r_glow)
-
-    # Rupee Mask
-    r_mask = Image.new('L', (size, size), 0)
-    ImageDraw.Draw(r_mask).text((tx, ty), text, font=font, fill=255)
-
-    # Complete 3D Metallic Golden Gradient (across the full actual height of glyph)
-    gold_fill = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    for y in range(max(0, actual_top - 5), min(size, actual_bottom + 5)):
-        ratio = (y - actual_top) / float(max(1, actual_bottom - actual_top))
-        ratio = max(0.0, min(1.0, ratio))
-        # Smooth luxury gold gradient:
-        # 0.0 -> 0.25: Champagne Gold (#FFFBEB -> #FDE047)
-        # 0.25 -> 0.65: Rich Amber Gold (#FDE047 -> #F59E0B)
-        # 0.65 -> 1.0: Deep Burnished Warm Gold (#F59E0B -> #B45309)
-        if ratio < 0.25:
-            t = ratio / 0.25
-            r_c = int(255 * (1 - t) + 253 * t)
-            g_c = int(251 * (1 - t) + 224 * t)
-            b_c = int(235 * (1 - t) + 71 * t)
-        elif ratio < 0.65:
-            t = (ratio - 0.25) / 0.40
-            r_c = int(253 * (1 - t) + 245 * t)
-            g_c = int(224 * (1 - t) + 158 * t)
-            b_c = int(71 * (1 - t) + 11 * t)
-        else:
-            t = (ratio - 0.65) / 0.35
-            r_c = int(245 * (1 - t) + 180 * t)
-            g_c = int(158 * (1 - t) + 83 * t)
-            b_c = int(11 * (1 - t) + 9 * t)
-        line = Image.new('RGBA', (size, 1), (r_c, g_c, b_c, 255))
-        gold_fill.paste(line, (0, y))
-
-    rupee_composite = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    rupee_composite.paste(gold_fill, (0, 0), mask=r_mask)
-
-    # Chiseled Specular Highlight on Rupee Edge
-    r_highlight = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    ImageDraw.Draw(r_highlight).text((tx - 1, ty - 2), text, font=font, fill=(255, 255, 255, 140))
-    rupee_bevel = Image.composite(r_highlight, Image.new('RGBA', (size, size), (0,0,0,0)), r_mask)
-    rupee_composite = Image.alpha_composite(rupee_composite, rupee_bevel)
-    canvas = Image.alpha_composite(canvas, rupee_composite)
+    # Draw Person 2 (Emerald Mint - The Borrower)
+    canvas = draw_person(canvas, p2_x, person_y, p_scale, base_color=(16, 185, 129, 230), outline_color=(255, 255, 255, 220))
 
     # ----------------------------------------------------
-    # 5. Emerald Growth Gemstone Badge (Top-Right of Glass Card)
+    # 4. Exchange Flow Arcs / Arrows (Money Transfer Animation Look)
     # ----------------------------------------------------
-    badge_cx = int(x1 - card_w * 0.16)
-    badge_cy = int(y0 + card_h * 0.16)
-    badge_r = int(card_w * 0.08)
+    arrow_layer = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    ad = ImageDraw.Draw(arrow_layer)
 
-    # Neon Emerald Halo
-    halo = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-    ImageDraw.Draw(halo).ellipse(
-        [badge_cx - badge_r*2, badge_cy - badge_r*2, badge_cx + badge_r*2, badge_cy + badge_r*2],
-        fill=(16, 185, 129, 170)
+    # Top Arc: Lending Arrow (Left to Center-Right)
+    top_arc_box = [p1_x + 10*p_scale, person_y - int(78*p_scale), p2_x - 10*p_scale, person_y - int(12*p_scale)]
+    arc_w = max(3, int(6 * p_scale))
+    ad.arc(top_arc_box, start=200, end=340, fill=(245, 158, 11, 230), width=arc_w)
+    
+    # Arrow head pointing right towards center
+    arrow_tip_x = int(center_x + card_w * 0.14)
+    arrow_tip_y = int(person_y - 45 * p_scale)
+    ad.polygon([
+        (arrow_tip_x, arrow_tip_y),
+        (arrow_tip_x - int(12*p_scale), arrow_tip_y - int(8*p_scale)),
+        (arrow_tip_x - int(12*p_scale), arrow_tip_y + int(8*p_scale)),
+    ], fill=(245, 158, 11, 255))
+
+    # Bottom Arc: Repayment Arrow (Right to Center-Left)
+    bot_arc_box = [p1_x + 10*p_scale, person_y + int(12*p_scale), p2_x - 10*p_scale, person_y + int(78*p_scale)]
+    ad.arc(bot_arc_box, start=20, end=160, fill=(16, 185, 129, 230), width=arc_w)
+    
+    # Arrow head pointing left towards lender
+    arrow_tip_x2 = int(center_x - card_w * 0.14)
+    arrow_tip_y2 = int(person_y + 45 * p_scale)
+    ad.polygon([
+        (arrow_tip_x2, arrow_tip_y2),
+        (arrow_tip_x2 + int(12*p_scale), arrow_tip_y2 - int(8*p_scale)),
+        (arrow_tip_x2 + int(12*p_scale), arrow_tip_y2 + int(8*p_scale)),
+    ], fill=(16, 185, 129, 255))
+
+    canvas = Image.alpha_composite(canvas, arrow_layer)
+
+    # ----------------------------------------------------
+    # 5. Glowing 3D Golden Rupee (₹) Coin in Center of Exchange
+    # ----------------------------------------------------
+    coin_cx = int(center_x)
+    coin_cy = int(person_y - 2 * p_scale)
+    coin_r = int(card_w * 0.18)
+
+    # Coin drop shadow
+    coin_sh = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    ImageDraw.Draw(coin_sh).ellipse(
+        [coin_cx - coin_r, coin_cy - coin_r + int(10*scale), coin_cx + coin_r, coin_cy + coin_r + int(10*scale)],
+        fill=(0, 0, 0, 210)
     )
-    halo = halo.filter(ImageFilter.GaussianBlur(size * 0.02 * scale))
-    canvas = Image.alpha_composite(canvas, halo)
+    coin_sh = coin_sh.filter(ImageFilter.GaussianBlur(int(14*scale)))
+    canvas = Image.alpha_composite(canvas, coin_sh)
 
-    # 3D Emerald Gemstone Badge
-    c_draw = ImageDraw.Draw(canvas)
-    c_draw.ellipse(
-        [badge_cx - badge_r, badge_cy - badge_r, badge_cx + badge_r, badge_cy + badge_r],
-        fill=(5, 150, 105, 245),
-        outline=(255, 255, 255, 235),
+    # Coin golden halo glow
+    coin_gl = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    ImageDraw.Draw(coin_gl).ellipse(
+        [coin_cx - coin_r*1.5, coin_cy - coin_r*1.5, coin_cx + coin_r*1.5, coin_cy + coin_r*1.5],
+        fill=(245, 158, 11, 150)
+    )
+    coin_gl = coin_gl.filter(ImageFilter.GaussianBlur(int(18*scale)))
+    canvas = Image.alpha_composite(canvas, coin_gl)
+
+    # Coin 3D Body
+    coin_img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    # Beveled Outer Rim
+    ImageDraw.Draw(coin_img).ellipse([coin_cx - coin_r, coin_cy - coin_r, coin_cx + coin_r, coin_cy + coin_r], fill=(180, 83, 9, 255))
+    
+    # Gold Gradient Face
+    coin_face_mask = Image.new('L', (size, size), 0)
+    ImageDraw.Draw(coin_face_mask).ellipse([coin_cx - coin_r + 3, coin_cy - coin_r + 3, coin_cx + coin_r - 3, coin_cy + coin_r - 3], fill=255)
+    
+    gold_coin = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    for y in range(coin_cy - coin_r, coin_cy + coin_r + 1):
+        ratio = (y - (coin_cy - coin_r)) / float(max(1, 2 * coin_r))
+        ratio = max(0.0, min(1.0, ratio))
+        if ratio < 0.35:
+            t = ratio / 0.35
+            r_c = int(255*(1-t) + 250*t)
+            g_c = int(251*(1-t) + 204*t)
+            b_c = int(195*(1-t) + 21*t)
+        else:
+            t = (ratio - 0.35) / 0.65
+            r_c = int(250*(1-t) + 217*t)
+            g_c = int(204*(1-t) + 119*t)
+            b_c = int(21*(1-t) + 6*t)
+        ImageDraw.Draw(gold_coin).line([(coin_cx - coin_r, y), (coin_cx + coin_r, y)], fill=(r_c, g_c, b_c, 255))
+    coin_img.paste(gold_coin, (0, 0), mask=coin_face_mask)
+
+    # Inner concentric beveled ring
+    inner_ring_r = int(coin_r * 0.82)
+    ImageDraw.Draw(coin_img).ellipse(
+        [coin_cx - inner_ring_r, coin_cy - inner_ring_r, coin_cx + inner_ring_r, coin_cy + inner_ring_r],
+        outline=(254, 240, 138, 220),
         width=max(2, int(size * 0.005 * scale))
     )
 
-    # Sleek Upward Financial Growth Arrow inside Badge
-    arrow_w = int(badge_r * 0.48)
-    arrow_pts = [
-        (badge_cx, badge_cy - int(badge_r * 0.52)),
-        (badge_cx + arrow_w, badge_cy + int(badge_r * 0.18)),
-        (badge_cx + int(arrow_w * 0.42), badge_cy + int(badge_r * 0.18)),
-        (badge_cx + int(arrow_w * 0.42), badge_cy + int(badge_r * 0.58)),
-        (badge_cx - int(arrow_w * 0.42), badge_cy + int(badge_r * 0.58)),
-        (badge_cx - int(arrow_w * 0.42), badge_cy + int(badge_r * 0.18)),
-        (badge_cx - arrow_w, badge_cy + int(badge_r * 0.18)),
-    ]
-    c_draw.polygon(arrow_pts, fill=(255, 255, 255, 255))
+    # Rupee Symbol '₹' on Coin
+    font_path = "C:/Windows/Fonts/seguisb.ttf"
+    if not os.path.exists(font_path):
+        font_path = "C:/Windows/Fonts/arialbd.ttf"
+    r_font_size = int(coin_r * 1.25)
+    r_font = ImageFont.truetype(font_path, r_font_size)
+
+    temp_d = ImageDraw.Draw(coin_img)
+    r_bbox = temp_d.textbbox((0, 0), "₹", font=r_font)
+    r_tw = r_bbox[2] - r_bbox[0]
+    r_th = r_bbox[3] - r_bbox[1]
+    r_tx = int(coin_cx - r_tw / 2.0 - r_bbox[0])
+    r_ty = int(coin_cy - r_th / 2.0 - r_bbox[1] - coin_r * 0.05)
+
+    # Rupee shadow on coin
+    temp_d.text((r_tx + 2, r_ty + 3), "₹", font=r_font, fill=(146, 64, 14, 230))
+    # Rupee crisp white-gold text
+    temp_d.text((r_tx, r_ty), "₹", font=r_font, fill=(255, 255, 255, 255))
+
+    canvas = Image.alpha_composite(canvas, coin_img)
 
     # ----------------------------------------------------
-    # 6. Crystal Lens Flare / Diamond Sparkles
+    # 6. Crystal Diamond Lens-Flare Sparkles
     # ----------------------------------------------------
     def add_crystal_sparkle(img, sx, sy, radius, color=(255, 255, 255, 240)):
         sp = Image.new('RGBA', img.size, (0, 0, 0, 0))
@@ -275,9 +295,9 @@ def create_glassy_luxury_icon(size=1024, is_foreground_only=False):
         return Image.alpha_composite(img, sp)
 
     # Top-left sparkle on glass card corner
-    canvas = add_crystal_sparkle(canvas, int(x0 + card_w * 0.18), int(y0 + card_h * 0.18), int(size * 0.038 * scale))
-    # Bottom-right subtle warm sparkle
-    canvas = add_crystal_sparkle(canvas, int(x1 - card_w * 0.18), int(y1 - card_h * 0.16), int(size * 0.024 * scale), color=(254, 240, 138, 210))
+    canvas = add_crystal_sparkle(canvas, int(x0 + card_w * 0.16), int(y0 + card_h * 0.16), int(size * 0.038 * scale))
+    # Coin sparkle
+    canvas = add_crystal_sparkle(canvas, int(coin_cx + coin_r * 0.72), int(coin_cy - coin_r * 0.72), int(size * 0.026 * scale), color=(254, 240, 138, 230))
 
     return canvas
 
@@ -290,10 +310,10 @@ def create_round_icon(img):
     return round_img
 
 def main():
-    print("Generating Master Glassmorphism Icons...")
-    master = create_glassy_luxury_icon(1024, is_foreground_only=False)
+    print("Generating Two People Money Exchange Glassmorphism Icons...")
+    master = create_lending_exchange_icon(1024, is_foreground_only=False)
     master_round = create_round_icon(master)
-    master_fg = create_glassy_luxury_icon(1024, is_foreground_only=True)
+    master_fg = create_lending_exchange_icon(1024, is_foreground_only=True)
 
     preview_path = r"C:\Users\ashri\SpringNew\Money_Lending_App\Frontend\glass_icon_preview.png"
     master.save(preview_path)
@@ -327,7 +347,7 @@ def main():
     master.resize((64, 64), Image.Resampling.LANCZOS).save(os.path.join(public_dir, 'favicon.png'))
     master.resize((192, 192), Image.Resampling.LANCZOS).save(os.path.join(public_dir, 'icon-192.png'))
     master.resize((512, 512), Image.Resampling.LANCZOS).save(os.path.join(public_dir, 'icon-512.png'))
-    print("Web favicons updated successfully!")
+    print("All Android and Web icons updated successfully!")
 
 if __name__ == '__main__':
     main()
