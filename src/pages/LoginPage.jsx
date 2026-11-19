@@ -37,7 +37,7 @@ const LoginPage = () => {
     }
   };
 
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '434137508884-ovbes788jb0jj372pksmovp7h4q48rec.apps.googleusercontent.com';
 
   const triggerGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
