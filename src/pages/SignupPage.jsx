@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { BookOpen, Lock, User, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { SocialLogin } from '@capgo/capacitor-social-login';
+import { Capacitor } from '@capacitor/core';
 
 const SignupPage = () => {
   const [username, setUsername] = useState('');
@@ -80,7 +82,50 @@ const SignupPage = () => {
     },
   });
 
-  const handleGoogleClick = () => {
+  const handleGoogleClick = async () => {
+    if (Capacitor.isNativePlatform()) {
+      setIsGoogleLoading(true);
+      setError('');
+      try {
+        await SocialLogin.initialize({
+          google: {
+            webClientId: googleClientId,
+          },
+        });
+        const res = await SocialLogin.login({
+          provider: 'google',
+          options: {
+            scopes: ['email', 'profile'],
+          },
+        });
+
+        const idToken = res?.result?.idToken || res?.result?.token;
+        const accessToken = res?.result?.accessToken;
+
+        const response = await api.post('/api/auth/google', {
+          idToken: idToken,
+          accessToken: accessToken,
+        });
+
+        const { token, role, username: responseUser } = response.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('username', responseUser);
+        localStorage.setItem('role', role);
+        navigate('/');
+      } catch (err) {
+        if (err?.response?.data?.message) {
+          setError(err.response.data.message);
+        } else if (err?.message) {
+          setError(err.message);
+        } else {
+          setError('Native Google Sign-in was cancelled or encountered an error.');
+        }
+      } finally {
+        setIsGoogleLoading(false);
+      }
+      return;
+    }
+
     if (!googleClientId || googleClientId.trim() === '' || googleClientId === 'dummy-google-client-id') {
       setError('Google OAuth Client ID is not configured yet. Please set VITE_GOOGLE_CLIENT_ID in your environment variables.');
       return;
